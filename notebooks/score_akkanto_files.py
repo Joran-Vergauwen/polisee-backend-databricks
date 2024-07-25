@@ -1,4 +1,15 @@
 # Databricks notebook source
+dbutils.widgets.text("start_date", "")
+dbutils.widgets.text("end_date", "")
+dbutils.widgets.text("root_folders", "polisee")
+
+# COMMAND ----------
+
+import langchain_core
+print(langchain_core.__version__)
+
+# COMMAND ----------
+
 from config.config import STORAGE_ACCOUNT_NAME, STORAGE_ACCOUNT_KEY, COSMOS_DB_ACCOUNT_URI, COSMOS_DB_ACCOUNT_KEY, COSMOS_DB_DATABASE_NAME, COSMOS_DB_CONTAINER_NAME, APPINSIGHTS_INSTRUMENTATIONKEY
 from read_functions.utils import (copy_pdf_from_blob_locally, 
                                   read_pdf_page_by_page, 
@@ -43,13 +54,13 @@ try:
                     cloud_metadata_s[date_to_score][i] = cloud_metadata
                 except Exception as e:
                     failed_run = True
-                    logging.error(f"Error in copy_pdf_from_blob_locally: {e}")
+                    print(f"Error in copy_pdf_from_blob_locally: {e}")
                 # Get pages
                 try:
                     pages = read_pdf_page_by_page(local_pdf_path)
                 except Exception as e:
                     failed_run = True
-                    logging.error(f"Error in read_pdf_page_by_page: {e}")
+                    print(f"Error in read_pdf_page_by_page: {e}")
 
                 # Generate output page by page
                 try:
@@ -57,7 +68,7 @@ try:
                     AI_output += [new_output]
                 except Exception as e:
                     failed_run = True
-                    logging.error(f"Error in generate_output_type_by_type: {e}")
+                    print(f"Error in generate_output_type_by_type: {e}")
 
                 # Write output to blob storage
                 try:
@@ -66,7 +77,7 @@ try:
                     cloud_metadata_s[date_to_score][i] = cloud_metadata
                 except Exception as e:
                     failed_run = True
-                    logging.error(f"Error in write_json_to_blob: {e}")
+                    print(f"Error in write_json_to_blob: {e}")
             # Update cosmos db        
             if failed_run:
                 update_status_cosmos_db(False, date_status, COSMOS_DB_ACCOUNT_URI, COSMOS_DB_ACCOUNT_KEY, COSMOS_DB_DATABASE_NAME, COSMOS_DB_CONTAINER_NAME)
@@ -75,12 +86,8 @@ try:
 except Exception as e:
     # Update cosmos DB
     failed_run = True
-    logging.error(f"Error in for loop: {e}")
+    print(f"Error in for loop: {e}")
 
 # COMMAND ----------
 
 cloud_metadata_s
-
-# COMMAND ----------
-
-

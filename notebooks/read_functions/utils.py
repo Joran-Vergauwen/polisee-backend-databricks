@@ -22,8 +22,7 @@ def get_all_dates_to_score(start_date, end_date, cosmos_db_account_uri, cosmos_d
         database = client.get_database_client(cosmos_db_database_name)
         container = database.get_container_client(cosmos_db_container_name)
 
-        dates_to_score = []
-        new_files = []
+        dates_to_score = [datetime.datetime.today().strftime('%Y/%m/%d')]
         today = datetime.datetime.today().strftime('%Y%m%d')
         
         # Get dates with new files
@@ -31,6 +30,7 @@ def get_all_dates_to_score(start_date, end_date, cosmos_db_account_uri, cosmos_d
             # query='SELECT * FROM poliseecontainer where poliseecontainer.statusScraping = "success" and (not IS_DEFINED(poliseecontainer.statusScoring) or (poliseecontainer.statusScoring != "success" and poliseecontainer.statusScoring != "skip"))',
             query = f'SELECT * FROM poliseecontainer where poliseecontainer.statusScoring = "waiting"',
             enable_cross_partition_query=True):
+            dates_to_score += [item["scrapedDate"][0:4] + "/" + item["scrapedDate"][4:6] + "/" + item["scrapedDate"][6:8]]
             try:
                 downloaded_doc += item["downloadedDoc"]
                 dates_to_score += [x[21:31] for x in downloaded_doc]
@@ -42,6 +42,7 @@ def get_all_dates_to_score(start_date, end_date, cosmos_db_account_uri, cosmos_d
                 pass
         
         dates_to_score = list(set(dates_to_score))
+        print(f"dates_to_score: {dates_to_score}")
         dates_to_score_cleaned = [x.replace("/", "") for x in dates_to_score]
     else: 
         # Get dates between start date and end date
@@ -54,16 +55,16 @@ def get_all_dates_to_score(start_date, end_date, cosmos_db_account_uri, cosmos_d
 
     # Get for all of these dates the status
     dates_to_score_str = '(' + ', '.join(f"'{item}'" for item in dates_to_score_cleaned) + ')'
-    for item in container.query_items(
-        # query='SELECT * FROM poliseecontainer where poliseecontainer.statusScraping = "success" and (not IS_DEFINED(poliseecontainer.statusScoring) or (poliseecontainer.statusScoring != "success" and poliseecontainer.statusScoring != "skip"))',
-        query = f'SELECT * FROM poliseecontainer where poliseecontainer.scrapedDate in {dates_to_score_str}',
-        enable_cross_partition_query=True):
-            try:
-                date_statuses += [item]  
-            except:
-                # print("no new docs")
-                pass
-
+    if len(dates_to_score_cleaned) > 0:
+        for item in container.query_items(
+            # query='SELECT * FROM poliseecontainer where poliseecontainer.statusScraping = "success" and (not IS_DEFINED(poliseecontainer.statusScoring) or (poliseecontainer.statusScoring != "success" and poliseecontainer.statusScoring != "skip"))',
+            query = f'SELECT * FROM poliseecontainer where poliseecontainer.scrapedDate in {dates_to_score_str}',
+            enable_cross_partition_query=True):
+                try:
+                    date_statuses += [item]  
+                except:
+                    # print("no new docs")
+                    pass
     return dates_to_score, date_statuses, dates_to_score_str
 
 def copy_pdf_from_blob_locally(storage_account_name, storage_account_key, container_name, cloud_metadata):
@@ -215,16 +216,17 @@ def get_all_filepaths(storage_account_name, storage_account_key, container_name,
         # date_to_score = date_status["scrapedDate"][0:4] + "/" + date_status["scrapedDate"][4:6] + "/" + date_status["scrapedDate"][6:8]
         cloud_paths[date_to_score] = []
         blob_list = container_client.list_blobs(name_starts_with=root_folders + date_to_score) # TODO add filters
-        for blob in blob_list: # Get all AI output files
-            new_metadata = {}
-            new_metadata["filename"] = blob["name"][blob["name"].rfind("/") + 1 :]
-            new_metadata["cloud_path"] = blob["name"]
-            new_metadata["root_folders"] = root_folders
-            policy_level_tmp = blob["name"].replace(root_folders, "")[11:]
-            new_metadata["policy_level_fr"] = METADATA["policy_levels"][policy_level_tmp[:policy_level_tmp.find("/")]]["fr"]
-            new_metadata["policy_level_nl"] = METADATA["policy_levels"][policy_level_tmp[:policy_level_tmp.find("/")]]["nl"]
-            new_metadata["local_path"] = ""
-            cloud_paths[date_to_score] += [new_metadata]
+        for blob in blob_list: 
+            if blob["name"].endswith(".pdf"):
+                new_metadata = {}
+                new_metadata["filename"] = blob["name"][blob["name"].rfind("/") + 1 :]
+                new_metadata["cloud_path"] = blob["name"]
+                new_metadata["root_folders"] = root_folders
+                policy_level_tmp = blob["name"].replace(root_folders, "")[11:]
+                new_metadata["policy_level_fr"] = policy_level_tmp[:policy_level_tmp.find("/")] # METADATA["policy_levels"][policy_level_tmp[:policy_level_tmp.find("/")]]["fr"]
+                new_metadata["policy_level_nl"] = policy_level_tmp[:policy_level_tmp.find("/")] # METADATA["policy_levels"][policy_level_tmp[:policy_level_tmp.find("/")]]["nl"]
+                new_metadata["local_path"] = ""
+                cloud_paths[date_to_score] += [new_metadata]
         if cloud_paths[date_to_score] == []:
             cloud_paths.pop(date_to_score)
 

@@ -1,6 +1,6 @@
 import os
 # from dotenv import load_dotenv
-from utils.keyvault import get_secret
+# from utils.keyvault import get_secret
 
 # load_dotenv()
 
