@@ -25,23 +25,23 @@ def get_all_dates_to_score(start_date, end_date, cosmos_db_account_uri, cosmos_d
         dates_to_score = [datetime.datetime.today().strftime('%Y/%m/%d')]
         today = datetime.datetime.today().strftime('%Y%m%d')
         
-        # Get dates with new files
-        for item in container.query_items(
-            # query='SELECT * FROM poliseecontainer where poliseecontainer.statusScraping = "success" and (not IS_DEFINED(poliseecontainer.statusScoring) or (poliseecontainer.statusScoring != "success" and poliseecontainer.statusScoring != "skip"))',
-            query = f'SELECT * FROM poliseecontainer where poliseecontainer.statusScoring = "waiting"',
-            enable_cross_partition_query=True):
-            dates_to_score += [item["scrapedDate"][0:4] + "/" + item["scrapedDate"][4:6] + "/" + item["scrapedDate"][6:8]]
-            try:
-                downloaded_doc += item["downloadedDoc"]
-                dates_to_score += [x[21:31] for x in downloaded_doc]
+        # # Get dates with new files
+        # for item in container.query_items(
+        #     # query='SELECT * FROM poliseecontainer where poliseecontainer.statusScraping = "success" and (not IS_DEFINED(poliseecontainer.statusScoring) or (poliseecontainer.statusScoring != "success" and poliseecontainer.statusScoring != "skip"))',
+        #     query = f'SELECT * FROM poliseecontainer where poliseecontainer.statusScoring = "waiting"',
+        #     enable_cross_partition_query=True):
+        #     dates_to_score += [item["scrapedDate"][0:4] + "/" + item["scrapedDate"][4:6] + "/" + item["scrapedDate"][6:8]]
+        #     try:
+        #         downloaded_doc += item["downloadedDoc"]
+        #         dates_to_score += [x[21:31] for x in downloaded_doc]
                 
-                # dates_to_score += [item["scrapedDate"][0:4] + "/" + item["scrapedDate"][4:6] + "/" + item["scrapedDate"][6:8]]
-                # date_statuses += [item]  
-            except:
-                # print("no new docs")
-                pass
+        #         # dates_to_score += [item["scrapedDate"][0:4] + "/" + item["scrapedDate"][4:6] + "/" + item["scrapedDate"][6:8]]
+        #         # date_statuses += [item]  
+        #     except:
+        #         # print("no new docs")
+        #         pass
         
-        dates_to_score = list(set(dates_to_score))
+        # dates_to_score = list(set(dates_to_score))
         print(f"dates_to_score: {dates_to_score}")
         dates_to_score_cleaned = [x.replace("/", "") for x in dates_to_score]
     else: 
